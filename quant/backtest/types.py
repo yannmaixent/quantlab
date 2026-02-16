@@ -16,7 +16,7 @@ class BacktestConfig:
     execution: ExecutionTiming = "close"
     start: Optional[str] = None # "YYYY-MM-DD"
     end: Optional[str] = None
-    benchmark: Optional[str]
+    benchmark: Optional[str] = None
 
 @dataclass(frozen=True)
 class Trade:
