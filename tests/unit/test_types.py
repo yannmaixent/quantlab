@@ -7,9 +7,9 @@ def test_types_instantiation():
 
     idx = pd.date_range("2020-01-01", periods=3, freq="D")
     res = BacktestResult(
-        meta={"symbo": "SPY"},
+        meta={"symbol": "SPY"},
         equity_curve= pd.Series([1, 2, 3], index=idx, dtype=float),
-        postions=pd.Series([0,1,1], index=idx, dtype=float),
+        positions=pd.Series([0,1,1], index=idx, dtype=float),
         trades=pd.DataFrame(),
         metrics={"TotalReturn": 0.0}
     )
@@ -17,4 +17,4 @@ def test_types_instantiation():
     assert cfg.symbol == "SPY"
     assert "symbol" in res.meta
     assert isinstance(res.equity_curve, pd.Series)
-    assert isinstance(res.postions, pd.Series)
+    assert isinstance(res.positions, pd.Series)
