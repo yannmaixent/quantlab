@@ -15,6 +15,7 @@ class VectorStrategy(Protocol):
         """
     
 
+
 def run_backtest(prices: pd.DataFrame, strategy: VectorStrategy, config: BacktestConfig) -> BacktestResult:
     """
     Vector backtest orchestrator (skeleton)
