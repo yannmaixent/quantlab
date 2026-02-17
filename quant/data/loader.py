@@ -62,7 +62,7 @@ def _standardize_ohlcv(df: pd.DataFrame) -> pd.DataFrame:
     
     return out
 
-def load_prices_yfinance(spec: DatSpec) -> pd.DataFrame:
+def load_prices_yfinance(spec: DataSpec) -> pd.DataFrame:
     """
     Load daily OHLCV data from yfinance and standardize.
     """
