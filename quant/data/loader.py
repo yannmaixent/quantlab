@@ -26,15 +26,14 @@ def _standardize_ohlcv(df: pd.DataFrame) -> pd.DataFrame:
         raise ValueError("Empty price dataframe received")
     
     # Normalize column names
-    colmap = {c: c.lower() for c in df.columns}
+    df2 = df.rename(columns={c: str(c).strip().lower() for c in df.columns})
 
-    # Some providers return 'adj close'. we ignore in V1.
-    # Keep only required if present
-    missing = [c for c in OHLCV_COLS if c not in df.columns]
-    if missing :
-        raise ValueError(f"Missing OHLCV columns: {missing}. Got: {list(df.columns)}")
+    # validate required columns on normalized df
+    missing = [c for c in OHLCV_COLS if c not in df2.columns]
+    if missing:
+        raise ValueError(f"Missing OHLCV columns: {missing}. Got: {list(df2.columns)}")
     
-    out = df[OHLCV_COLS].copy()
+    out = df2[OHLCV_COLS].copy()
 
     # Index checks
     if not isinstance(out.index, pd.DatetimeIndex):
