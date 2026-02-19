@@ -62,6 +62,29 @@ def _standardize_ohlcv(df: pd.DataFrame) -> pd.DataFrame:
     
     return out
 
+def validate_ohlcv(prices: pd.DataFrame) -> None:
+    if prices is None or prices.empty:
+        raise ValueError("Prices are empty.")
+    
+    if not isinstance(prices.index, pd.DatetimeIndex):
+        raise TypeError("Prices index must be a DatetimeIndex.")
+    
+    if prices.index.tz is not None:
+        raise ValueError("Prices index must be tz-naive.")
+    
+    if not prices.index.is_monotonic_increasing:
+        raise ValueError("Prices index must be sorted increasing")
+    
+    if prices.index.has_duplicates:
+        raise ValueError("Prices index must be unique (no duplicates)")
+    
+    if list(prices.columns) != OHLCV_COLS:
+        raise ValueError(f"Prices columns must be {OHLCV_COLS}. Got {list(prices.columns)}")
+    
+    if prices[["open", "high", "low", "close"]].isna().any().any():
+        raise ValueError("OHLC contains NaN values.")
+
+
 def load_prices_yfinance(spec: DataSpec) -> pd.DataFrame:
     """
     Load daily OHLCV data from yfinance and standardize.
@@ -77,5 +100,7 @@ def load_prices_yfinance(spec: DataSpec) -> pd.DataFrame:
     # yfinance returns colums like Open High Low Close Volume Dividens Stocks Splits
     df = _standardize_ohlcv(df)
 
+    validate_ohlcv(df)
     return df
+
 
