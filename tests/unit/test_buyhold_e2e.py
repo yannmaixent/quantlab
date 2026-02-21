@@ -21,4 +21,5 @@ def test_buy_and_hold_equity_increases_when_price_increases():
     res = run_backtest(prices, BuyAndHold(), cfg)
 
     assert res.equity_curve.iloc[-1] > res.equity_curve.iloc[0]
-    assert (res.positions == 1.0).all()
+    # postions are now shares (not weights)
+    assert (res.positions > 0).all()
