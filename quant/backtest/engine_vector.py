@@ -67,6 +67,14 @@ def run_backtest(
      - Fees and slipppage applied in basis points.
      """
      
+     from quant.metrics.performance import(
+          compute_total_return,
+          compute_cagr,
+          compute_annualized_volatility,
+          compute_sharpe_ratio,
+          compute_max_drawdown
+     )
+
      idx = prices.index
      close = prices["close"].astype(float)
 
@@ -90,6 +98,15 @@ def run_backtest(
           slippage_bps=config.slippage_bps,
      )
 
+
+     metrics ={
+          "total_return": compute_total_return(equity_curve),
+          "cagr": compute_cagr(equity_curve),
+          "volatility": compute_annualized_volatility(equity_curve),
+          "sharpe": compute_sharpe_ratio(equity_curve),
+          "max_drawdown": compute_max_drawdown(equity_curve),
+     }
+
      positions = shares
 
      # --- Build result ---
@@ -104,7 +121,7 @@ def run_backtest(
           trades=pd.DataFrame(
                columns=["ts", "symbol","side", "qty", "price", "fee", "slippage", "notional"]
           ),
-          metrics = {},
+          metrics = metrics,
           artifacts={
                "weights": weights,
                "returns":close.pct_change().fillna(0.0)
