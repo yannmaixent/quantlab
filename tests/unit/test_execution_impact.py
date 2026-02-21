@@ -2,7 +2,7 @@ def test_fees_reduce_equity():
     import pandas as pd
     from quant.backtest.engine_vector import run_backtest
     from quant.backtest.types import BacktestConfig
-    from quant.strategies.buy_and_hold import BuyAndHold
+    from quant.strategies.buy_hold import BuyAndHold
 
     idx = pd.date_range("2020-01-01", periods=5, freq="D")
     prices = pd.DataFrame(
