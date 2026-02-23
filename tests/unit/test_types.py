@@ -8,10 +8,11 @@ def test_types_instantiation():
     idx = pd.date_range("2020-01-01", periods=3, freq="D")
     res = BacktestResult(
         meta={"symbol": "SPY"},
-        equity_curve= pd.Series([1, 2, 3], index=idx, dtype=float),
-        positions=pd.Series([0,1,1], index=idx, dtype=float),
+        equity_curve=pd.Series([1, 2, 3], index=idx, dtype=float),
+        positions=pd.Series([0, 1, 1], index=idx, dtype=float),
         trades=pd.DataFrame(),
-        metrics={"TotalReturn": 0.0}
+        metrics={"TotalReturn": 0.0},
+        artifacts={},  # ✅ AJOUT
     )
 
     assert cfg.symbol == "SPY"
