@@ -9,42 +9,27 @@ from quant.backtest.types import BacktestConfig
 from quant.strategies.buy_hold import BuyAndHold
 
 
-# =========================
-# Composite scoring logic
-# =========================
-
 def _compute_score(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Compute composite quant score.
-
-    Score logic:
+    Composite quant score:
     - Reward high CAGR
     - Reward high Sharpe
     - Penalize large drawdowns
     """
-
     if df.empty:
         return df
 
     df = df.copy()
-
     eps = 1e-9
 
-    # Z-score normalization
     df["cagr_z"] = (df["cagr"] - df["cagr"].mean()) / (df["cagr"].std() + eps)
     df["sharpe_z"] = (df["sharpe"] - df["sharpe"].mean()) / (df["sharpe"].std() + eps)
     df["dd_z"] = (df["max_drawdown"] - df["max_drawdown"].mean()) / (df["max_drawdown"].std() + eps)
 
-    # Composite score
-    # Drawdown is negative -> subtract its z-score
+    # max_drawdown is negative -> subtract its zscore
     df["score"] = df["cagr_z"] + df["sharpe_z"] - df["dd_z"]
-
     return df
 
-
-# =========================
-# Main scan function
-# =========================
 
 def run_scan(
     symbols: List[str],
@@ -55,31 +40,37 @@ def run_scan(
     fees_bps: float = 10.0,
     slippage_bps: float = 5.0,
     top_n: Optional[int] = None,
+    lookback_months: Optional[int] = None,
+    momentum_filter: bool = True,
 ) -> pd.DataFrame:
     """
-    Run Buy & Hold backtest on multiple symbols
-    and return ranked DataFrame with metrics + composite score.
+    Run Buy & Hold backtest on multiple symbols and return ranked DataFrame.
+
+    Enhancements (Day 9):
+    - lookback_months: use only last N months of data
+    - momentum_filter: exclude symbols with non-positive total return over the backtest window
     """
 
     rows = []
 
     for symbol in symbols:
         try:
-            # ---- Load data via DataSpec
-            spec = DataSpec(
-                symbol=symbol,
-                start=start,
-                end=end,
-                interval=interval,
-            )
-
+            spec = DataSpec(symbol=symbol, start=start, end=end, interval=interval)
             prices = load_prices_yfinance(spec)
 
             if prices is None or prices.empty:
                 print(f"[WARNING] No data for {symbol}")
                 continue
 
-            # ---- Backtest config
+            # Rolling window slicing (last N months)
+            if lookback_months is not None:
+                cutoff = prices.index.max() - pd.DateOffset(months=lookback_months)
+                prices = prices.loc[prices.index >= cutoff]
+
+                if prices.empty or len(prices) < 5:
+                    print(f"[WARNING] Not enough data after lookback for {symbol}")
+                    continue
+
             cfg = BacktestConfig(
                 symbol=symbol,
                 initial_cash=initial_cash,
@@ -87,36 +78,25 @@ def run_scan(
                 slippage_bps=slippage_bps,
             )
 
-            # ---- Run backtest
             res = run_backtest(prices, BuyAndHold(), cfg)
 
-            # ---- Collect metrics
-            row = {
-                "symbol": symbol,
-                **res.metrics,
-            }
+            # Momentum filter: keep only positive total return over window
+            if momentum_filter and res.metrics.get("total_return", 0.0) <= 0.0:
+                continue
 
-            rows.append(row)
+            rows.append({"symbol": symbol, **res.metrics})
 
         except Exception as e:
             print(f"[ERROR] {symbol}: {e}")
-
-    # =========================
-    # Build DataFrame
-    # =========================
 
     df = pd.DataFrame(rows)
 
     if df.empty:
         return df
 
-    # Compute composite score
     df = _compute_score(df)
-
-    # Rank by score
     df = df.sort_values("score", ascending=False).reset_index(drop=True)
 
-    # Keep only top N if requested
     if top_n is not None:
         df = df.head(top_n)
 
