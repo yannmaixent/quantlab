@@ -4,6 +4,7 @@ import pandas as pd
 
 from quant.backtest.types import BacktestConfig, BacktestResult
 from quant.strategies.base import VectorStrategy, StrategyOutput
+from quant.risk.vol_target import apply_vol_targeting
 
 from quant.metrics.performance import (
     compute_total_return,
@@ -105,6 +106,25 @@ def run_backtest(
         fees_bps=config.fees_bps,
         slippage_bps=config.slippage_bps,
     )
+
+    # --- Risk Engine (optional) ---
+    if config.vol_target is not None:
+        adj_weights = apply_vol_targeting(
+            base_weights=weights,
+            equity_curve=equity_curve,
+            target_vol=config.vol_target,
+            window=config.vol_window,
+            max_leverage=config.max_leverage,
+        )
+
+        equity_curve, shares = _simulate_execution(
+            prices=prices,
+            weights=adj_weights,
+            initial_cash=config.initial_cash,
+            fees_bps=config.fees_bps,
+            slippage_bps=config.slippage_bps,
+        )
+        weights = adj_weights
 
     # --- Base metrics ---
     metrics: dict[str, float] = {

@@ -28,6 +28,10 @@ class BacktestConfig:
     # --- Day 11: rolling metrics params (UI-ready) ---
     rolling_window: int = 63
     risk_free_rate: float = 0.0
+    # Day 14 risk engine
+    vol_target: float | None = None      # e.g. 0.15
+    vol_window: int = 63
+    max_leverage: float = 2.0
 
 
 @dataclass(frozen=True)

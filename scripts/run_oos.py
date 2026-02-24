@@ -29,6 +29,11 @@ def main() -> int:
     p.add_argument("--rolling-window", type=int, default=63)
     p.add_argument("--rf", type=float, default=0.0)
     p.add_argument("--out", default="artifacts_oos")
+
+    p.add_argument("--vol-target", type=float, default=None)
+    p.add_argument("--vol-window", type=int, default=63)
+    p.add_argument("--max-leverage", type=float, default=2.0)
+
     args = p.parse_args()
 
     spec = DataSpec(symbol=args.symbol, start=args.start, end=args.end, interval=args.interval)
@@ -43,6 +48,11 @@ def main() -> int:
         slippage_bps=args.slippage_bps,
         rolling_window=args.rolling_window,
         risk_free_rate=args.rf,
+
+        # Day 14 risk engine (paramétrable)
+        vol_target=args.vol_target,
+        vol_window=args.vol_window,
+        max_leverage=args.max_leverage,
     )
 
     res_train = run_backtest(split.train, BuyAndHold(), cfg)
@@ -85,6 +95,9 @@ def main() -> int:
     print("Test Sharpe :", report.test_metrics.get("sharpe"))
     print("Train MaxDD :", report.train_metrics.get("max_drawdown"))
     print("Test MaxDD  :", report.test_metrics.get("max_drawdown"))
+    print("Train Vol   :", report.train_metrics.get("volatility"))
+    print("Test Vol    :", report.test_metrics.get("volatility"))
+    print("Test Stability:", report.test_metrics.get("stability_score"))
     print("Exported to :", out_dir)
 
     return 0
