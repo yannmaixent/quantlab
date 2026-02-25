@@ -1,70 +1,66 @@
 from __future__ import annotations
 
 import argparse
-import json
 from pathlib import Path
-
+import json
 import pandas as pd
 
-from quant.portfolio.portfolio_backtest import run_equal_weight_portfolio
-from quant.metrics.performance import (
-    compute_total_return,
-    compute_cagr,
-    compute_annualized_volatility,
-    compute_sharpe_ratio,
-    compute_max_drawdown,
+from quant.data.loader import DataSpec, load_prices_yfinance
+from quant.portfolio.engine_portfolio import (
+    build_equal_weight_portfolio,
+    run_portfolio_backtest,
 )
 
 
 def main() -> int:
-    p = argparse.ArgumentParser(description="Run equal-weight portfolio backtest on top-N symbols.")
+    p = argparse.ArgumentParser(description="Multi-asset portfolio backtest.")
     p.add_argument("--symbols", nargs="+", required=True)
     p.add_argument("--start", default="2020-01-01")
     p.add_argument("--end", default="2021-01-01")
     p.add_argument("--interval", default="1d")
     p.add_argument("--cash", type=float, default=10_000.0)
-    p.add_argument("--fees-bps", type=float, default=10.0)
-    p.add_argument("--slippage-bps", type=float, default=5.0)
+    p.add_argument("--rebalance", type=int, default=21)
     p.add_argument("--out", default="artifacts_portfolio")
+
     args = p.parse_args()
 
-    pr = run_equal_weight_portfolio(
-        symbols=args.symbols,
-        start=args.start,
-        end=args.end,
-        interval=args.interval,
-        initial_cash=args.cash,
-        fees_bps=args.fees_bps,
-        slippage_bps=args.slippage_bps,
+    price_dict = {}
+
+    for s in args.symbols:
+        spec = DataSpec(symbol=s, start=args.start, end=args.end, interval=args.interval)
+        df = load_prices_yfinance(spec)
+        price_dict[s] = df["close"]
+
+    prices = pd.DataFrame(price_dict).dropna()
+
+    weights = build_equal_weight_portfolio(
+        prices,
+        rebalance_every=args.rebalance,
     )
 
-    eq = pr.equity_curve
-
-    metrics = {
-        "total_return": compute_total_return(eq),
-        "cagr": compute_cagr(eq),
-        "volatility": compute_annualized_volatility(eq),
-        "sharpe": compute_sharpe_ratio(eq),
-        "max_drawdown": compute_max_drawdown(eq),
-    }
+    result = run_portfolio_backtest(
+        prices=prices,
+        weights=weights,
+        initial_cash=args.cash,
+    )
 
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    eq.to_csv(out_dir / "portfolio_equity.csv", header=True)
-    pr.per_symbol_metrics.to_csv(out_dir / "per_symbol_metrics.csv", index=False)
+    result["equity_curve"].to_csv(out_dir / "equity_curve.csv")
+    result["weights"].to_csv(out_dir / "weights.csv")
 
-    payload = {"meta": pr.meta, "metrics": metrics}
-    (out_dir / "portfolio_metrics.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    (out_dir / "metrics.json").write_text(
+        json.dumps(result["metrics"], indent=2),
+        encoding="utf-8",
+    )
 
-    print("=== PORTFOLIO SUMMARY ===")
-    print(f"Symbols: {args.symbols}")
-    print(f"Total Return: {metrics['total_return']:.2%}")
-    print(f"CAGR: {metrics['cagr']:.2%}")
-    print(f"Volatility: {metrics['volatility']:.2%}")
-    print(f"Sharpe: {metrics['sharpe']:.3f}")
-    print(f"Max Drawdown: {metrics['max_drawdown']:.2%}")
-    print(f"Exported to: {out_dir}")
+    print("\n=== PORTFOLIO SUMMARY ===")
+    print("Symbols:", args.symbols)
+    print("Total Return:", result["metrics"]["total_return"])
+    print("Sharpe:", result["metrics"]["sharpe"])
+    print("Max Drawdown:", result["metrics"]["max_drawdown"])
+    print("Exported to:", out_dir)
 
     return 0
 
